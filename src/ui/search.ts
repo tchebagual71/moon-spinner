@@ -32,10 +32,10 @@ export class SearchBox {
   private isOpen = false;
   private readonly listId = nextId('results');
 
-  constructor(private readonly places: Places, quick: QuickPlace[], private readonly cb: SearchCallbacks) {
+  constructor(private readonly places: Places, quick: QuickPlace[], compact: boolean, private readonly cb: SearchCallbacks) {
     const hasData = places.features.length + places.sites.length > 0;
     this.input = h('input', {
-      type: 'search', class: 'search-input', placeholder: hasData ? 'Search craters, maria, landing sites' : 'Search unavailable (gazetteer failed to load)',
+      type: 'search', class: 'search-input', placeholder: !hasData ? 'Search unavailable' : compact ? 'Search the Moon' : 'Search craters, maria, landing sites',
       autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search',
       role: 'combobox', 'aria-expanded': 'false', 'aria-controls': this.listId, 'aria-autocomplete': 'list', 'aria-label': 'Search lunar features and landing sites',
     });

@@ -9,7 +9,9 @@ export type LightingHandler = (mode: LightingMode, opts?: { date?: Date; sunLon?
 const HOUR = 3600_000;
 const RANGE_HOURS = 15 * 24;
 
-const dateFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const longFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const shortFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const dateFmt = { format: (d: Date): string => (window.innerWidth < 420 ? shortFmt : longFmt).format(d) };
 
 function offsetLabel(hours: number): string {
   if (hours === 0) return 'Live';
@@ -70,6 +72,7 @@ export class LightingControl {
   private readonly latSlider: HTMLInputElement;
   private readonly lonOut: HTMLElement;
   private readonly latOut: HTMLElement;
+  private readonly sunInfo: HTMLElement;
   private timer = 0;
 
   constructor(private readonly apply: LightingHandler) {
@@ -119,6 +122,7 @@ export class LightingControl {
     // --- Sun
     this.lonOut = h('output', { class: 'mono' }, '');
     this.latOut = h('output', { class: 'mono' }, '');
+    this.sunInfo = h('span', { class: 'phase-name' }, '');
     this.lonSlider = h('input', { type: 'range', class: 'range', min: -180, max: 180, step: 1, value: 0, 'aria-label': 'Sun longitude' });
     this.latSlider = h('input', { type: 'range', class: 'range', min: -90, max: 90, step: 1, value: 0, 'aria-label': 'Sun latitude' });
     this.lonSlider.addEventListener('input', () => {
@@ -134,12 +138,13 @@ export class LightingControl {
     const sunPane = h(
       'div',
       { class: 'light-pane' },
-      h('div', { class: 'range-row' }, h('span', { class: 'range-name' }, icon('sun', 16), 'Longitude'), this.lonSlider, this.lonOut),
-      h('div', { class: 'range-row sun-lat' }, h('span', { class: 'range-name' }, h('span', { class: 'range-name-pad' }), 'Latitude'), this.latSlider, this.latOut),
+      h('div', { class: 'light-info' }, icon('sun', 20), this.sunInfo),
+      h('div', { class: 'range-row' }, h('span', { class: 'range-name' }, 'Longitude'), this.lonSlider, this.lonOut),
+      h('div', { class: 'range-row sun-lat' }, h('span', { class: 'range-name' }, 'Latitude'), this.latSlider, this.latOut),
     );
 
     // --- Full
-    const fullPane = h('div', { class: 'light-pane' }, h('p', { class: 'light-note' }, 'Even light, no shadows. Useful for reading albedo — not a real lighting condition.'));
+    const fullPane = h('div', { class: 'light-pane light-pane-note' }, h('p', { class: 'light-note' }, 'Even light, no shadows. Useful for reading albedo — not a real lighting condition.'));
 
     this.panes.set('realtime', nowPane);
     this.panes.set('manual', sunPane);
@@ -210,6 +215,7 @@ export class LightingControl {
     } else if (this.mode === 'manual') {
       this.lonSlider.value = String(this.sunLon);
       this.latSlider.value = String(this.sunLat);
+      setText(this.sunInfo, `Sun overhead at ${formatLat(this.sunLat, 0)}, ${formatLon(this.sunLon, 0)}`);
       setText(this.lonOut, formatLon(this.sunLon, 0));
       setText(this.latOut, formatLat(this.sunLat, 0));
       this.lonSlider.setAttribute('aria-valuetext', `Sun overhead at ${formatLon(this.sunLon, 0)}`);

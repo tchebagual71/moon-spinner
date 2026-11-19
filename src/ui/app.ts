@@ -4,7 +4,7 @@ import type { Rasters } from '../data/rasters';
 import { Places, altitudeForDiameter, type NearestFeature, type Place } from '../data/places';
 import type { QualityChoice } from '../data/quality';
 import { writeHash, type HashState } from '../data/urlState';
-import { clamp, formatAltitude, formatLatLon, niceScale, wrapLon } from '../data/geo';
+import { clamp, distanceKm, formatAltitude, formatLatLon, niceScale, wrapLon } from '../data/geo';
 import { h, prefersReducedMotion, setText, store } from './dom';
 import { icon } from './icons';
 import { LOW_SUPPORT, gradeFor, type Ramp } from './ramp';
@@ -103,7 +103,7 @@ export class App {
       onGoToNearest: (n) => this.goToNearest(n),
     });
     this.lighting = new LightingControl((mode, o) => this.view.setLighting(mode, o));
-    this.search = new SearchBox(this.places, QUICK, {
+    this.search = new SearchBox(this.places, QUICK, this.phoneMq.matches, {
       onPlace: (p) => this.goToPlace(p),
       onQuick: (q) => {
         const r = q.resolve(this.places);
@@ -176,7 +176,10 @@ export class App {
 
     const init = opts.initial;
     if (init.center) void this.view.flyTo(init.center, init.altitudeKm);
-    if (init.selection) this.select(init.selection);
+    if (init.selection) {
+      const place = this.places.matchAt(init.selection);
+      this.select(place ? { lat: place.lat, lon: place.lon, id: place.id, name: place.name, detail: placeDetail(place) } : init.selection);
+    }
     else this.refreshPoint();
     this.onView(this.view.getViewState());
 
@@ -218,11 +221,20 @@ export class App {
     this.disposers.push(() => this.phoneMq.removeEventListener('change', place));
 
     if ('ResizeObserver' in window) {
+      const stage = this.opts.canvas.parentElement;
       const ro = new ResizeObserver(() => {
-        this.root.style.setProperty('--sheet-h', `${Math.round(this.panel.el.getBoundingClientRect().height)}px`);
+        const full = this.panel.el.getBoundingClientRect().height;
+        this.root.style.setProperty('--sheet-h', `${Math.round(full)}px`);
+        // Phones: nudge the globe up so it sits centred in the area the collapsed sheet leaves free.
+        const collapsed = full - this.panel.bodyHeight();
+        const shift = this.phoneMq.matches ? Math.max(0, Math.round((collapsed - 68) / 2)) : 0;
+        if (stage) stage.style.transform = shift ? `translateY(${-shift}px)` : '';
       });
       ro.observe(this.panel.el);
-      this.disposers.push(() => ro.disconnect());
+      this.disposers.push(() => {
+        ro.disconnect();
+        if (stage) stage.style.transform = '';
+      });
     }
     const onResize = () => this.schedule();
     window.addEventListener('resize', onResize);
@@ -232,8 +244,9 @@ export class App {
   private bindCanvas(): void {
     const c = this.opts.canvas;
     const dismiss = () => this.dismissHint(true);
-    c.addEventListener('pointerdown', dismiss, { passive: true });
+    document.addEventListener('pointerdown', dismiss, { passive: true });
     c.addEventListener('wheel', dismiss, { passive: true });
+    this.disposers.push(() => document.removeEventListener('pointerdown', dismiss));
     c.addEventListener('pointerdown', () => {
       // Tapping the globe closes transient UI; on phones also frees the screen.
       this.search.close(false);
@@ -272,7 +285,8 @@ export class App {
 
   /** Keyboard navigation for the globe (the renderer handles pointer input). */
   private onCanvasKey(e: KeyboardEvent): void {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // The real renderer handles arrows and +/- itself (and prevents default); this is the fallback.
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
     const v = this.viewState;
     const step = clamp((v.altitudeKm / MOON_RADIUS_KM) * 18, 0.05, 20);
     let { lat, lon } = v.center;
@@ -435,18 +449,22 @@ export class App {
       const reach = Math.cos(Math.min(horizon, (span * 0.8) / MOON_RADIUS_KM));
       const cl = Math.cos((v.center.lat * Math.PI) / 180);
       const sl = Math.sin((v.center.lat * Math.PI) / 180);
+      const sepKm = span * 0.07;
       this.places.sites.forEach((s, i) => {
         // Whole-disc view: only crewed landings, so labels stay readable.
         if (span > 2600 && s.kind !== 'crewed') return;
         const la = (s.lat * Math.PI) / 180;
         const dot = sl * Math.sin(la) + cl * Math.cos(la) * Math.cos(((s.lon - v.center.lon) * Math.PI) / 180);
         if (dot < reach) return;
+        if (markers.some((m) => distanceKm(m, s) < sepKm)) return;
         markers.push({ id: `s:${i}`, lat: s.lat, lon: s.lon, label: span > 2600 ? s.name.replace(/\s*\(.*\)$/, '') : s.name, kind: 'site' });
       });
     }
     if (this.state.labels) {
-      const cap = this.phoneMq.matches ? 22 : 40;
-      markers.push(...this.places.labels(v.center, v.altitudeKm, span, Math.max(8, cap - markers.length)));
+      // Fewer labels on the whole-disc view so the Moon itself stays the hero.
+      const wide = span > 2600;
+      const cap = this.phoneMq.matches ? (wide ? 14 : 22) : wide ? 26 : 40;
+      markers.push(...this.places.labels(v.center, v.altitudeKm, span, Math.max(8, cap - markers.length), markers.slice()));
     }
     const sel = this.selection;
     if (sel?.name) {

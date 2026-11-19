@@ -51,6 +51,25 @@ export class Ramp {
     return rgb(s[s.length - 1].rgb);
   }
 
+  /**
+   * Ramp colour lifted just enough to stay legible as a thin stroke / icon on the dark UI
+   * (the low end of the ramp is a very dark plum). Hue is preserved.
+   */
+  ink(score: number, minLuma = 0.2): string {
+    const m = /rgb\((\d+) (\d+) (\d+)\)/.exec(this.color(score));
+    if (!m) return this.color(score);
+    let c: RGB = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const luma = (v: RGB) => {
+      const f = (x: number) => {
+        const u = x / 255;
+        return u <= 0.03928 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]);
+    };
+    for (let i = 0; i < 12 && luma(c) < minLuma; i++) c = [c[0] + (255 - c[0]) * 0.14, c[1] + (255 - c[1]) * 0.14, c[2] + (255 - c[2]) * 0.14];
+    return rgb(c);
+  }
+
   gradient(direction = 'to right'): string {
     return `linear-gradient(${direction}, ${this.stops.map((s) => `${rgb(s.rgb)} ${(s.t * 100).toFixed(1)}%`).join(', ')})`;
   }

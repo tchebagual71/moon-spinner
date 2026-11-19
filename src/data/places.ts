@@ -14,6 +14,10 @@ export interface NearestFeature {
   inside: boolean;
 }
 
+const TYPE_WEIGHT: Record<string, number> = {
+  Rima: 0.22, Dorsum: 0.22, Catena: 0.3, Rupes: 0.4, Vallis: 0.45, Lacus: 0.6, Palus: 0.6, Mons: 0.7, 'Satellite Feature': 0.8,
+};
+
 export function normalize(s: string): string {
   return s
     .normalize('NFD')
@@ -105,6 +109,15 @@ export class Places {
     return null;
   }
 
+  /** Place whose catalogued position coincides with a point (used to restore a shared selection). */
+  matchAt(p: LatLon, tolDeg = 0.002): Place | null {
+    const near = (a: LatLon) => Math.abs(a.lat - p.lat) < tolDeg && Math.abs(((a.lon - p.lon + 540) % 360) - 180) < tolDeg;
+    const s = this.sites.findIndex(near);
+    if (s >= 0) return this.sitePlace(s);
+    const f = this.features.findIndex(near);
+    return f >= 0 ? this.featurePlace(f) : null;
+  }
+
   findFeature(name: string): Place | null {
     const n = normalize(name);
     const i = this.names.indexOf(n);
@@ -167,36 +180,39 @@ export class Places {
    * Zoom-dependent label set: biggest features when zoomed out, more detail as the view narrows,
    * limited to the neighbourhood of the view centre and decluttered.
    */
-  labels(center: LatLon, altitudeKm: number, spanKm: number, cap: number): Marker[] {
+  labels(center: LatLon, altitudeKm: number, spanKm: number, cap: number, avoid: LatLon[] = []): Marker[] {
     const n = this.features.length;
     if (!n || cap <= 0) return [];
     const horizon = Math.acos(MOON_RADIUS_KM / (MOON_RADIUS_KM + Math.max(1, altitudeKm)));
     const reach = Math.min(horizon * 0.92, (spanKm * 0.75) / MOON_RADIUS_KM);
     const minDot = Math.cos(reach);
-    const minDiam = spanKm * 0.035;
+    const minDiam = spanKm * 0.04;
     const maxDiam = spanKm * 1.6;
     const allowSatellites = spanKm < 500;
-    const sep = (spanKm * 0.085) / MOON_RADIUS_KM;
+    const sep = (spanKm * 0.1) / MOON_RADIUS_KM;
     const sepDot = Math.cos(sep);
     const [x, y, z] = toVec(center.lat, center.lon);
     const v = this.vec;
     const out: Marker[] = [];
     const chosen: number[] = [];
+    for (const a of avoid) chosen.push(...toVec(a.lat, a.lon));
     for (let i = 0, j = 0; i < n && out.length < cap; i++, j += 3) {
       const f = this.features[i];
       if (f.diameterKm < minDiam) break; // sorted by descending diameter
       if (f.diameterKm > maxDiam) continue;
+      // Long thin features (rilles, ridges, scarps…) have big nominal sizes but are not landmarks.
+      if (f.diameterKm * (TYPE_WEIGHT[f.type] ?? 1) < minDiam) continue;
       if (!allowSatellites && f.type === 'Satellite Feature') continue;
       if (v[j] * x + v[j + 1] * y + v[j + 2] * z < minDot) continue;
       let clash = false;
-      for (const c of chosen) {
-        if (v[j] * v[c] + v[j + 1] * v[c + 1] + v[j + 2] * v[c + 2] > sepDot) {
+      for (let c = 0; c < chosen.length; c += 3) {
+        if (v[j] * chosen[c] + v[j + 1] * chosen[c + 1] + v[j + 2] * chosen[c + 2] > sepDot) {
           clash = true;
           break;
         }
       }
       if (clash) continue;
-      chosen.push(j);
+      chosen.push(v[j], v[j + 1], v[j + 2]);
       out.push({ id: `f:${i}`, lat: f.lat, lon: f.lon, label: f.name, kind: 'feature' });
     }
     return out;

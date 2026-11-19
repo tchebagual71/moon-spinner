@@ -64,6 +64,8 @@ class Gauge {
   private readonly gradeText: HTMLElement;
   private readonly gradeIcon: HTMLElement;
   private readonly needle: SVGPathElement;
+  private readonly index: SVGPathElement;
+  private readonly hatches: (SVGPathElement | null)[] = [];
   private lastIcon = '';
 
   constructor(private readonly ramp: Ramp) {
@@ -77,6 +79,18 @@ class Gauge {
       this.segs.push(p);
       svg.append(p);
     }
+    // Light diagonal-style striping over the low end, matching the hatch drawn on the globe.
+    for (let i = 0; i < SEGMENTS; i++) {
+      if (((i + 0.5) / SEGMENTS) * 100 >= LOW_SUPPORT) {
+        this.hatches.push(null);
+        continue;
+      }
+      const p = svgEl('path', { d: arcPath(cx, cy, r, START + i * step + 0.75, START + (i + 1) * step - 0.75), class: 'gauge-hatch' });
+      this.hatches.push(p);
+      svg.append(p);
+    }
+    this.index = svgEl('path', { class: 'gauge-index', d: '' });
+    svg.append(this.index);
     // Threshold tick + scale labels.
     const tickA = START + (LOW_SUPPORT / 100) * SWEEP;
     const [tx0, ty0] = arcPoint(cx, cy, r + 8, tickA);
@@ -116,10 +130,11 @@ class Gauge {
       const segScore = ((i + 0.5) / SEGMENTS) * 100;
       p.style.stroke = on ? this.ramp.color(segScore) : '';
       p.classList.toggle('on', on);
-      p.classList.toggle('hatch', on && segScore < LOW_SUPPORT);
+      this.hatches[i]?.classList.toggle('on', on);
     });
     if (score === null) {
       this.needle.setAttribute('d', '');
+      this.index.setAttribute('d', '');
       setText(this.num, '–');
       setText(this.gradeText, placeholder);
       this.gradeIcon.replaceChildren();
@@ -131,6 +146,7 @@ class Gauge {
     const [x0, y0] = arcPoint(cx, cy, r - 8, a);
     const [x1, y1] = arcPoint(cx, cy, r + 8, a);
     this.needle.setAttribute('d', `M${x0.toFixed(2)} ${y0.toFixed(2)}L${x1.toFixed(2)} ${y1.toFixed(2)}`);
+    this.index.setAttribute('d', arcPath(cx, cy, r + 7.5, START, Math.max(START + 0.5, a)));
     setText(this.num, String(Math.round(score)));
     const g = gradeFor(score);
     setText(this.gradeText, g.label);
@@ -139,7 +155,7 @@ class Gauge {
       this.lastIcon = g.icon;
     }
     this.grade.dataset.grade = g.key;
-    this.gradeIcon.style.color = this.ramp.color(score);
+    this.gradeIcon.style.color = this.ramp.ink(score);
   }
 }
 
@@ -168,7 +184,7 @@ class MiniGauge {
       return;
     }
     this.arc.style.strokeDasharray = `${Math.max(0.02, score / 100) * this.C * 0.75} ${this.C}`;
-    this.arc.style.stroke = this.ramp.color(score);
+    this.arc.style.stroke = this.ramp.ink(score);
     setText(this.num, String(Math.round(score)));
   }
 }
@@ -221,7 +237,7 @@ export function buildLegend(ramp: Ramp, compact = false): HTMLElement {
       h('div', { class: 'legend-hatch', style: `width:${LOW_SUPPORT}%` }),
     ),
     h('div', { class: 'legend-scale mono' }, h('span', null, '0'), h('span', { style: `left:${LOW_SUPPORT}%` }, String(LOW_SUPPORT)), h('span', null, '100')),
-    h('div', { class: 'legend-key' }, h('i', { class: 'swatch-hatch', style: `--c:${ramp.color(LOW_SUPPORT / 2)}` }), `Hatched: below ${LOW_SUPPORT} — sparse / inferred`),
+    h('div', { class: 'legend-key' }, h('i', { class: 'swatch-hatch', style: `--c:${ramp.color(LOW_SUPPORT / 2)}` }), compact ? `Hatched: below ${LOW_SUPPORT}` : `Hatched: below ${LOW_SUPPORT} — sparse / inferred`),
   );
 }
 
@@ -367,6 +383,11 @@ export class MeterPanel {
     if (target.classList.contains('sheet-handle')) target.addEventListener('click', () => this.setOpen(!this.open));
   }
 
+  /** Current rendered height of the expandable body (0 when collapsed). */
+  bodyHeight(): number {
+    return this.body.getBoundingClientRect().height;
+  }
+
   get isOpen(): boolean {
     return this.open;
   }
@@ -416,6 +437,7 @@ export class MeterPanel {
     const low = score !== null && score < LOW_SUPPORT;
     this.el.classList.toggle('is-low', low);
     this.mini.set(score);
+    if (score !== null) this.el.style.setProperty('--score-ink', this.ramp.ink(score, 0.3));
     this.gauge.set(score, p.data === 'loading' ? 'Loading measurements…' : 'Score unavailable');
     setText(
       this.scopeNote,
@@ -437,7 +459,7 @@ export class MeterPanel {
         this.statusIcon.replaceChildren(icon(g.icon, 14));
         this.lastStatusIcon = g.icon;
       }
-      this.statusIcon.style.color = this.ramp.color(score);
+      this.statusIcon.style.color = this.ramp.ink(score);
     }
     const what = selected ? (p.name ?? 'selected point') : 'view centre';
     this.toggle.setAttribute(
@@ -470,7 +492,7 @@ export class MeterPanel {
 
     let iStrong: string;
     let iRest: string;
-    const polar = Math.abs(p.pos.lat) >= 78;
+    const polar = Math.abs(p.pos.lat) >= 65;
     if (c.imagery >= 80) {
       iStrong = 'Well lit';
       iRest = 'good sunlit optical coverage';

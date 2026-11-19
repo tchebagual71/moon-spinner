@@ -26,9 +26,6 @@ class BootError extends Error {
   }
 }
 
-const params = new URLSearchParams(location.search);
-const useMock = params.get('mock') === '1';
-
 const stage = document.getElementById('stage') as HTMLElement;
 const uiRoot = document.getElementById('ui') as HTMLElement;
 const bootScreen = new BootScreen();
@@ -61,7 +58,6 @@ function hasWebGL2(): boolean {
 }
 
 async function loadManifest(): Promise<Manifest> {
-  if (useMock) return (await import('./ui/__mock__/mockData')).createMockManifest();
   let res: Response;
   try {
     res = await fetch('/data/manifest.json', { cache: 'no-cache' });
@@ -79,15 +75,13 @@ async function loadManifest(): Promise<Manifest> {
 }
 
 async function loadRenderer(): Promise<MoonViewCtor> {
-  if (useMock) return (await import('./ui/__mock__/MockMoonView')).default;
   return (await import('./render/MoonView')).default;
 }
 
 async function loadRamp(): Promise<Ramp> {
   let stops: RampStops = FALLBACK_RAMP;
   try {
-    if (useMock) stops = (await import('./ui/__mock__/mockData')).MOCK_RAMP;
-    else stops = (await import('./render/confidenceRamp')).CONFIDENCE_RAMP;
+    stops = (await import('./render/confidenceRamp')).CONFIDENCE_RAMP;
   } catch (e) {
     console.warn('[boot] confidence ramp unavailable, using fallback colours', e);
   }
@@ -104,7 +98,7 @@ async function boot(): Promise<void> {
   const initial = readHash();
 
   try {
-    if (!useMock && !hasWebGL2()) {
+    if (!hasWebGL2()) {
       throw new BootError('WebGL isn’t available', 'This browser or device can’t create the 3D graphics context the Moon needs. Try another browser, or enable hardware acceleration.');
     }
 

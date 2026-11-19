@@ -36,7 +36,7 @@ export const VERTEX = /* glsl */ `
 precision highp float;
 precision highp sampler2D;
 ${COMMON}
-uniform float uHeightLod;
+uniform float uGridN;       // grid segments across the patch
 out vec3 vDir;
 out vec2 vTuv;
 
@@ -46,7 +46,9 @@ void main() {
   float lat = (guv.y - 0.5) * PI;
   float cl = cos(lat);
   vec3 dir = vec3(cl * sin(lon), sin(lat), cl * cos(lon));
-  float h = textureLod(uHeight, guv, uHeightLod).r * uHScale;
+  // pick the height mip that matches the vertex spacing so displacement does not alias
+  float lod = max(0.0, log2((uRect.z - uRect.x) * float(textureSize(uHeight, 0).x) / uGridN));
+  float h = textureLod(uHeight, guv, lod).r * uHScale;
   vDir = dir;
   vTuv = position.xy;
   gl_Position = projectionMatrix * viewMatrix * vec4(dir * (1.0 + h), 1.0);
@@ -70,6 +72,7 @@ uniform float uExposure;
 uniform float uEarthshine;
 uniform float uConfOpacity;
 uniform float uHatchPx;
+uniform float uHatchBelow;
 uniform vec3 uRamp[${RAMP_SIZE}];
 uniform float uRampStops[${RAMP_SIZE}];
 uniform vec3 uSelDir;
@@ -167,6 +170,8 @@ void main() {
   vec2 fw = abs(gx) + abs(gy);
   float footprint = max(fw.y * uColorSize.y, fw.x * uColorSize.x * cl);
   float w = (1.0 - smoothstep(0.4, 0.85, footprint)) * uTileAlpha;
+  // the equirectangular mosaic degenerates towards the poles; hand back to the base map there (84..88 deg)
+  w *= 1.0 - smoothstep(0.9945, 0.9994, abs(dir.y));
   float tl = pow(texture(uTile, vTuv).r, uTileTone.y) * uTileTone.x;
   vec3 chroma = albedo / max(baseLum, 0.004);
   albedo = mix(albedo, chroma * tl, w);
@@ -179,6 +184,24 @@ void main() {
   vec3 east = vec3(co, 0.0, -so);
   vec3 north = vec3(-sl * so, cl, -sl * co);
   vec3 n = normalize(east * ntn.x + north * ntn.y + dir * ntn.z);
+  // Polar caps (> 86 deg): the east/north frame spins around the pole, so filtered normal-map
+  // texels there mix incompatible frames. Blend to a normal derived from the height map by finite
+  // differences in a pole-safe tangent frame instead.
+  float pb = smoothstep(0.99756, 0.99939, abs(dir.y));
+  if (pb > 0.0) {
+    vec3 t1 = normalize(vec3(1.0, 0.0, 0.0) - dir * dir.x);
+    vec3 t2 = cross(dir, t1);
+    float e = max(1.5 * PI / float(textureSize(uHeight, 0).y), 1.5 * uSel.y);
+    float lodp = log2(max(e * float(textureSize(uHeight, 0).y) / PI, 1.0)) - 0.5;
+    float ha = textureLod(uHeight, dirToUv(normalize(dir + t1 * e)), lodp).r;
+    float hb = textureLod(uHeight, dirToUv(normalize(dir - t1 * e)), lodp).r;
+    float hc = textureLod(uHeight, dirToUv(normalize(dir + t2 * e)), lodp).r;
+    float hd = textureLod(uHeight, dirToUv(normalize(dir - t2 * e)), lodp).r;
+    vec2 g = vec2(ha - hb, hc - hd) * uHScale / (2.0 * e);
+    vec3 nh = normalize(dir - t1 * g.x - t2 * g.y);
+    n = normalize(mix(n, nh, pb));
+    ntn = vec3(dot(n, east), dot(n, north), dot(n, dir));
+  }
 
   // ---- sun-lit photometry ----
   vec3 V = uViewDir;
@@ -189,7 +212,7 @@ void main() {
   float cosA = clamp(dot(L, V), -1.0, 1.0);
   float alpha = acos(cosA);
   float deg = degrees(alpha);
-  float Lf = clamp(1.0 + deg * (-0.019 + deg * (2.42e-4 - 1.46e-6 * deg)), 0.0, 1.0);
+  float Lf = clamp(1.0 + deg * (-0.019 + deg * (2.42e-4 - 1.46e-6 * deg)), 0.18, 1.0);
   float ls = 2.0 * mu0 / (mu0 + mu + 1e-4);
   float disk = Lf * ls + (1.0 - Lf) * mu0;
   float th = tan(min(alpha, 3.1) * 0.5);
@@ -216,15 +239,16 @@ void main() {
   vec3 fullCol = albedo * relief * 0.95;
 
   lin = mix(lin, fullCol, uFullMix);
-  vec3 col = toSrgb(aces(lin * 0.92));
+  vec3 col = toSrgb(aces(lin * 0.85));
 
   // ---- data-support overlay ----
   if (uConfOpacity > 0.002) {
     float c = textureGrad(uConf, uv, gx, gy).b;
     vec3 rc = rampColor(c);
-    float shade = clamp(mix(1.0, hill, 0.55), 0.45, 1.35) * (0.62 + 0.55 * sqrt(clamp(baseLum, 0.0, 1.0)));
+    // keep the ramp colours close to the legend: only a light terrain cue underneath
+    float shade = clamp(mix(1.0, hill, 0.3), 0.7, 1.15) * (0.86 + 0.2 * sqrt(clamp(baseLum, 0.0, 1.0)));
     vec3 oc = clamp(rc * shade, 0.0, 1.0);
-    float lowMask = 1.0 - smoothstep(HATCH_T - 0.012, HATCH_T + 0.012, c);
+    float lowMask = 1.0 - smoothstep(uHatchBelow - 0.012, uHatchBelow + 0.012, c);
     float s = (gl_FragCoord.x + gl_FragCoord.y) / uHatchPx;
     float stripe = 1.0 - smoothstep(0.16, 0.26, abs(fract(s) - 0.5));
     oc = mix(oc, vec3(0.97, 0.95, 1.0), stripe * lowMask * 0.62);

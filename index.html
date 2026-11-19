@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Moon Spinner — explore the real Moon in 3D</title>
+    <meta name="description" content="Spin and explore a hyper-realistic 3D Moon built from real NASA Lunar Reconnaissance Orbiter data — true elevation, live phase lighting, 9,000 named features, and an honest meter showing how well each place has actually been measured." />
+    <meta name="theme-color" content="#040508" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Moon Spinner" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Moon Spinner — explore the real Moon in 3D" />
+    <meta property="og:description" content="An interactive 3D Moon built from real NASA LRO data, with live lighting and a data-support meter for every point on the surface." />
+    <meta property="og:site_name" content="Moon Spinner" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #040508; color: #ecebe6; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <main id="stage" aria-label="Moon"></main>
+      <div id="ui"></div>
+    </div>
+    <noscript>
+      <p style="padding: 2rem; font: 16px system-ui, sans-serif">Moon Spinner needs JavaScript and WebGL to draw the Moon.</p>
+    </noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

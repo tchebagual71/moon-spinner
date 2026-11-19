@@ -162,7 +162,7 @@ export async function loadHeightField(
   if ('close' in d.source) d.source.close();
 
   // mip chain (box filter) in float, stored as half floats
-  const mipmaps: { data: Uint16Array; width: number; height: number }[] = [];
+  const mipmaps: { data: Uint16Array<ArrayBuffer>; width: number; height: number }[] = [];
   let cur = km;
   let cw = w;
   let ch = h;
