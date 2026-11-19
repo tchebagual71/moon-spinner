@@ -1,0 +1,120 @@
+{
+  "generated": "2026-11-19T01:12:21Z",
+  "color": [
+    {
+      "url": "/data/color_2k.jpg",
+      "width": 2048,
+      "height": 1024
+    },
+    {
+      "url": "/data/color_4k.jpg",
+      "width": 4096,
+      "height": 2048
+    },
+    {
+      "url": "/data/color_8k.jpg",
+      "width": 8192,
+      "height": 4096
+    }
+  ],
+  "normal": [
+    {
+      "url": "/data/normal_2k.png",
+      "width": 2048,
+      "height": 1024
+    },
+    {
+      "url": "/data/normal_4k.jpg",
+      "width": 4096,
+      "height": 2048
+    },
+    {
+      "url": "/data/normal_8k.jpg",
+      "width": 8192,
+      "height": 4096
+    }
+  ],
+  "normalGain": 2.0,
+  "height": [
+    {
+      "url": "/data/height_1k.png",
+      "width": 1024,
+      "height": 512
+    },
+    {
+      "url": "/data/height_2k.png",
+      "width": 2048,
+      "height": 1024
+    },
+    {
+      "url": "/data/height_4k.png",
+      "width": 4096,
+      "height": 2048
+    }
+  ],
+  "heightRange": {
+    "minMeters": -9200.0,
+    "maxMeters": 10800.0
+  },
+  "confidence": {
+    "url": "/data/confidence.png",
+    "width": 2048,
+    "height": 1024
+  },
+  "lolaCounts": {
+    "url": "/data/lola_counts.png",
+    "width": 5760,
+    "height": 2880,
+    "countsLogScale": 22.0,
+    "sourcePixelsPerDegree": 16
+  },
+  "sources": [
+    {
+      "id": "lroc-wac-color",
+      "title": "LROC WAC natural-colour global mosaic (CGI Moon Kit, lroc_color_poles_16k.tif)",
+      "provider": "NASA Scientific Visualization Studio / LROC team, Arizona State University",
+      "url": "https://svs.gsfc.nasa.gov/4720/",
+      "note": "Base colour. Adapted by NASA SVS (Ernie Wright, 2019) from the Hapke-normalised mosaic of >100,000 LRO Wide Angle Camera images (643/566/415 nm as R/G/B). The photographic mosaic covers 70°S–70°N; poleward of that SVS filled the map with monochrome LOLA laser-albedo data. Downsampled here from 16384×8192 in linear light."
+    },
+    {
+      "id": "lola-ldem",
+      "title": "LOLA Gridded Data Record LDEM_64 / LDEM_16 (global elevation, 64 and 16 px/deg)",
+      "provider": "NASA GSFC / MIT — Lunar Orbiter Laser Altimeter team, PDS Geosciences Node",
+      "url": "https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/",
+      "note": "Elevation in metres relative to a 1737.4 km sphere (DN × 0.5 m). Source of the height maps and of the normal maps, which are computed from true metric slopes at 1× relief."
+    },
+    {
+      "id": "lola-ldec",
+      "title": "LOLA Gridded Data Record LDEC_64 / LDEC_16 (laser shot counts per pixel)",
+      "provider": "NASA GSFC / MIT — Lunar Orbiter Laser Altimeter team, PDS Geosciences Node",
+      "url": "https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/",
+      "note": "Number of real altimeter measurements behind every elevation pixel (data through 2016-11-29). Pixels with zero counts were interpolated by the LOLA team. Basis of the altimetry score; LDEC_16 is shipped log-encoded as lola_counts.png."
+    },
+    {
+      "id": "lola-illumination",
+      "title": "LOLA polar illumination products: LPSR_65N/S_240M (permanently shadowed regions) and AVGVISIB_65N/S_240M (average solar visibility), 2016-08 release",
+      "provider": "NASA GSFC LOLA team (Mazarico et al. 2011, Icarus 211) — unsupported EXTRAS products",
+      "url": "https://imbrium.mit.edu/EXTRAS/ILLUMINATION/",
+      "note": "Computed by the LOLA team from polar topography, 240 m/px, complete poleward of 65°. Used for the imagery score near the poles: permanently shadowed ground can never appear in sunlit photographs."
+    },
+    {
+      "id": "trek-wac-tiles",
+      "title": "LRO WAC Global Mosaic 100 m (303 px/deg) v02 — streamed tiles",
+      "provider": "NASA Solar System Treks (Moon Trek), JPL / LROC team, Arizona State University",
+      "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/",
+      "note": "Monochrome 100 m/px mosaic streamed on demand for close-up views. Not baked into this site; availability depends on the NASA tile service."
+    },
+    {
+      "id": "iau-gazetteer",
+      "title": "Gazetteer of Planetary Nomenclature (lunar feature names)",
+      "provider": "International Astronomical Union (IAU) Working Group for Planetary System Nomenclature / USGS Astrogeology Science Center",
+      "url": "https://planetarynames.wr.usgs.gov/",
+      "note": "Official names, positions and sizes of lunar features used for labels and search."
+    }
+  ],
+  "confidenceMethod": {
+    "altimetry": "How much of the terrain shape was actually measured by LRO's laser altimeter (LOLA) rather than interpolated. From the LOLA shot-count grid LDEC_64 (shots per elevation pixel, 64 px/deg), counts are grouped into ground cells of about 474 m × 474 m (pixels are merged along longitude by 1/cos(latitude) so cells have the same ground size at every latitude). Score = 0.7 × (fraction of cells containing at least one real laser shot) + 0.3 × (1 − exp(−shots per km² / 100)), area-averaged over each pixel of a 2048×1024 map. LRO's polar orbit makes ground tracks converge at the poles, so coverage is densest there and thinnest in the gaps between tracks near the equator.",
+    "imagery": "How well sunlit photography can show this place. Score = L × F × S. L = sqrt(min(1, sin(e)/sin(30°))) where e = 90° − |latitude| + 1.54° is the highest the Sun ever gets at local noon: no penalty until the noon Sun is below 30° (latitudes beyond about 61.5°), then a growing penalty for grazing light and long shadows. F = 0.75 poleward of 70° latitude (1 elsewhere) because the base colour map there is not photography: the LROC WAC colour mosaic stops at 70° and NASA SVS filled the caps with monochrome LOLA laser-albedo data. S uses the LOLA team's polar illumination maps (240 m/px) poleward of 65°, blended in between 65° and 67°: S = (1 − fraction of the pixel in permanent shadow) × min(1, fraction of time sunlit / 0.25); it is 0 in permanently shadowed craters, which have never been seen in direct sunlight, and reduced where the ground is lit less than half as often as an open plain. S = 1 at lower latitudes.",
+    "combined": "Combined = 0.5 × altimetry + 0.5 × imagery (a plain average, so excellent laser coverage of a permanently shadowed crater still counts for half). These scores are an index computed by this app from the published coverage and illumination products listed under sources; they are not an official NASA or LRO quality metric, and they describe global-map data support, not the accuracy of any single measurement."
+  }
+}

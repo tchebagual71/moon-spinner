@@ -27,6 +27,8 @@ export interface Manifest {
   color: RasterTier[];
   /** Tangent-space normal maps (R=+east, G=+north, B=+up, 0..255 -> -1..1), true 1x relief. */
   normal: RasterTier[];
+  /** Normal-map xy were multiplied by this gain before encoding: n.xy = (rg*2-1) / normalGain. Default 1. */
+  normalGain?: number;
   /**
    * Elevation, 16 bit packed in an 8-bit RGB PNG: value16 = R*256 + G.
    * metres = minMeters + value16 / 65535 * (maxMeters - minMeters), relative to the 1737.4 km sphere.
