@@ -451,7 +451,9 @@ def imagery_score(layers: dict) -> np.ndarray:
 def build_confidence(path: Path) -> None:
     alt = altimetry_score()
     img = imagery_score(imagery_layers())
-    comb = COMB_W_ALT * alt + COMB_W_IMG * img
+    # Half the plain average, half the weaker of the two: a spot is only as well supported as its weakest dataset,
+    # so a permanently shadowed crater (imagery 0) lands in the low band even with perfect laser coverage.
+    comb = 0.5 * (COMB_W_ALT * alt + COMB_W_IMG * img) + 0.5 * np.minimum(alt, img)
     wts = np.cos(np.deg2rad(lat_centres(CONF_H)))[:, None] * np.ones((1, CONF_W))
     for name, a in (("altimetry", alt), ("imagery", img), ("combined", comb)):
         log(f"  {name}: area-weighted mean {np.average(a, weights=wts) * 100:.1f}%, min {a.min() * 100:.0f}%, max {a.max() * 100:.0f}%")
@@ -528,8 +530,8 @@ CONFIDENCE_METHOD = {
         "S = 1 at lower latitudes."
     ),
     "combined": (
-        "Combined = 0.5 × altimetry + 0.5 × imagery (a plain average, so excellent laser coverage of a permanently shadowed crater still "
-        "counts for half). These scores are an index computed by this app from the published coverage and illumination products listed under "
+        "Combined = 0.5 × average(altimetry, imagery) + 0.5 × minimum(altimetry, imagery): half the plain average and half the weaker "
+        "of the two, so a place is pulled toward its weakest dataset (a permanently shadowed crater with perfect laser coverage scores 25, not 50). These scores are an index computed by this app from the published coverage and illumination products listed under "
         "sources; they are not an official NASA or LRO quality metric, and they describe global-map data support, not the accuracy of any single measurement."
     ),
 }

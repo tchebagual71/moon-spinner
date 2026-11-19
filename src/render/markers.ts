@@ -9,7 +9,7 @@ import type { Marker } from '../types';
  */
 
 const CSS = `
-.mv-overlay{position:absolute;overflow:hidden;pointer-events:none;contain:strict;z-index:1;
+.mv-overlay{position:absolute;overflow:hidden;pointer-events:none;contain:strict;
   font:500 12px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
 .mv-marker{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;height:40px;margin:-20px 0 0 -20px;
   padding:0 0 0 14px;box-sizing:border-box;white-space:nowrap;color:#f4f1ea;opacity:0;visibility:hidden;

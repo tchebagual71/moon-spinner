@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-19T01:12:21Z",
+  "generated": "2026-11-19T01:52:32Z",
   "color": [
     {
       "url": "/data/color_2k.jpg",
@@ -115,6 +115,6 @@
   "confidenceMethod": {
     "altimetry": "How much of the terrain shape was actually measured by LRO's laser altimeter (LOLA) rather than interpolated. From the LOLA shot-count grid LDEC_64 (shots per elevation pixel, 64 px/deg), counts are grouped into ground cells of about 474 m × 474 m (pixels are merged along longitude by 1/cos(latitude) so cells have the same ground size at every latitude). Score = 0.7 × (fraction of cells containing at least one real laser shot) + 0.3 × (1 − exp(−shots per km² / 100)), area-averaged over each pixel of a 2048×1024 map. LRO's polar orbit makes ground tracks converge at the poles, so coverage is densest there and thinnest in the gaps between tracks near the equator.",
     "imagery": "How well sunlit photography can show this place. Score = L × F × S. L = sqrt(min(1, sin(e)/sin(30°))) where e = 90° − |latitude| + 1.54° is the highest the Sun ever gets at local noon: no penalty until the noon Sun is below 30° (latitudes beyond about 61.5°), then a growing penalty for grazing light and long shadows. F = 0.75 poleward of 70° latitude (1 elsewhere) because the base colour map there is not photography: the LROC WAC colour mosaic stops at 70° and NASA SVS filled the caps with monochrome LOLA laser-albedo data. S uses the LOLA team's polar illumination maps (240 m/px) poleward of 65°, blended in between 65° and 67°: S = (1 − fraction of the pixel in permanent shadow) × min(1, fraction of time sunlit / 0.25); it is 0 in permanently shadowed craters, which have never been seen in direct sunlight, and reduced where the ground is lit less than half as often as an open plain. S = 1 at lower latitudes.",
-    "combined": "Combined = 0.5 × altimetry + 0.5 × imagery (a plain average, so excellent laser coverage of a permanently shadowed crater still counts for half). These scores are an index computed by this app from the published coverage and illumination products listed under sources; they are not an official NASA or LRO quality metric, and they describe global-map data support, not the accuracy of any single measurement."
+    "combined": "Combined = 0.5 × average(altimetry, imagery) + 0.5 × minimum(altimetry, imagery): half the plain average and half the weaker of the two, so a place is pulled toward its weakest dataset (a permanently shadowed crater with perfect laser coverage scores 25, not 50). These scores are an index computed by this app from the published coverage and illumination products listed under sources; they are not an official NASA or LRO quality metric, and they describe global-map data support, not the accuracy of any single measurement."
   }
 }

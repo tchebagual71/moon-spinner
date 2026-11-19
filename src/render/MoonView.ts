@@ -570,6 +570,11 @@ export default class MoonView implements IMoonView {
       this.heightField?.texture.dispose();
       this.heightField = h;
       this.uniforms.uHeight.value = h.texture;
+      // upload now, then drop the CPU copies of the mip chain (tens of MB for the 4k tier);
+      // after a context loss everything is reloaded anyway
+      this.renderer.initTexture(h.texture);
+      h.texture.mipmaps = [];
+      h.texture.image = { data: null, width: h.width, height: h.height } as unknown as THREE.DataTexture['image'];
       if (keepCpu || !this.cpuHeights) {
         this.cpuHeights = h;
         this.markers.refreshHeights();

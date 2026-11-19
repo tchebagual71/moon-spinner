@@ -37,7 +37,7 @@ The overlay answers "how much real measurement is behind what I am looking at he
   (permanently shadowed and poorly lit polar terrain, and areas where the colour mosaic is
   filled in rather than photographed, score low),
 
-into a **combined** 0–100 % value (currently a plain average of the two). The precise formulas live in the data pipeline and are written
+into a **combined** 0–100 % value (half the average of the two plus half the weaker one, so a spot is pulled toward its weakest dataset). The precise formulas live in the data pipeline and are written
 out in plain language to `manifest.json` → `confidenceMethod` (`altimetry`, `imagery`, `combined`),
 which is the source of truth and is what the app displays.
 

@@ -263,13 +263,17 @@ export class GlobeControls {
     _q1.copy(this.q).invert();
     _v1.copy(Y_AXIS).applyQuaternion(_q1);
     const m = _v1.x * _v1.x + _v1.y * _v1.y;
-    const t = Math.min(1, Math.max(0, (m - 0.02) / 0.28));
+    const t = Math.min(1, Math.max(0, (m - 0.005) / 0.2));
     return { roll: Math.atan2(_v1.x, _v1.y), weight: t * t * (3 - 2 * t) };
   }
 
   private relaxRoll(dt: number): boolean {
     const { roll, weight } = this.rollState();
     if (weight <= 0 || Math.abs(roll) < 1e-5) return false;
+    // While a finger is down only correct small drift. After travelling over a pole the view is
+    // upside-down; turning it during the drag would swing the surface around the finger, so that
+    // (large) correction waits until the drag is released.
+    if (this.dragging && Math.abs(roll) > 1.05) return false;
     const frac = 1 - Math.exp(-dt * 9 * weight);
     // cap the swing rate so the turn back to north-up after crossing a pole is gentle
     const step = Math.sign(roll) * Math.min(Math.abs(roll) * frac, 2.5 * dt + 1e-4);
@@ -406,7 +410,7 @@ export class GlobeControls {
       } else {
         _q2.setFromAxisAngle(_v3.copy(this.omega).divideScalar(w), w * dt);
         this.q.premultiply(_q2).normalize();
-        this.omega.multiplyScalar(Math.exp(-dt / 0.38));
+        this.omega.multiplyScalar(Math.exp(-dt / 0.3));
         active = true;
       }
     }
@@ -573,7 +577,7 @@ export class GlobeControls {
     } else if (!cancelled && g.moved && !g.multi && e.timeStamp - this.lastMoveTime < 70) {
       const w = this.omega.length();
       if (w > 0.002 + this.alt * 0.02) {
-        if (w > 5) this.omega.multiplyScalar(5 / w);
+        if (w > 3.2) this.omega.multiplyScalar(3.2 / w);
         this.inertia = true;
       }
     }

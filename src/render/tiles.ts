@@ -100,7 +100,7 @@ export class TileManager {
     this.group = group;
     // 'low' stops one level short of the mosaic's native resolution and keeps far fewer tiles.
     this.maxLevel = quality === 'low' ? 7 : TILE_MAX_LEVEL;
-    this.maxLeaves = quality === 'low' ? 28 : quality === 'medium' ? 64 : 120;
+    this.maxLeaves = quality === 'low' ? 36 : quality === 'medium' ? 64 : 120;
     this.cacheSize = quality === 'low' ? 56 : quality === 'medium' ? 140 : 280;
     this.concurrency = quality === 'low' ? 4 : 6;
     this.anisotropy = Math.min(maxAnisotropy, quality === 'low' ? 2 : 4);
@@ -256,7 +256,7 @@ export class TileManager {
     const cosEmis = Math.max(0, (d * cg - 1) / D);
     const texel = (size / TILE_SIZE) * D2R;
     const latNear = Math.max(0, Math.abs(latC) - half);
-    if (latNear > 88 * D2R) return true; // the shader hands the polar caps back to the base map
+    if (latNear > 89.6 * D2R) return true; // the shader hands the polar caps back to the base map
     const polar = Math.sqrt(Math.min(1, Math.cos(latNear) / 0.5)); // equirect tiles get very thin near the poles
     const px = ((texel * view.focalPx) / D) * Math.sqrt(Math.max(cosEmis, 0.2)) * polar;
 

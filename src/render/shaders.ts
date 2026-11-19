@@ -170,9 +170,13 @@ void main() {
   vec2 fw = abs(gx) + abs(gy);
   float footprint = max(fw.y * uColorSize.y, fw.x * uColorSize.x * cl);
   float w = (1.0 - smoothstep(0.4, 0.85, footprint)) * uTileAlpha;
-  // the equirectangular mosaic degenerates towards the poles; hand back to the base map there (84..88 deg)
-  w *= 1.0 - smoothstep(0.9945, 0.9994, abs(dir.y));
-  float tl = pow(texture(uTile, vTuv).r, uTileTone.y) * uTileTone.x;
+  // the equirectangular mosaic degenerates at the very poles; hand back to the base map there (88.6..89.6 deg)
+  w *= 1.0 - smoothstep(0.999701, 0.999976, abs(dir.y));
+  // the mosaic has a bad edge column at lon = +-180: skip the outermost texel there
+  vec2 tuv = vTuv;
+  if (uRect.x < 1e-6) tuv.x = max(tuv.x, 1.5 / 256.0);
+  if (uRect.z > 0.999999) tuv.x = min(tuv.x, 1.0 - 1.5 / 256.0);
+  float tl = pow(textureGrad(uTile, tuv, dFdx(vTuv), dFdy(vTuv)).r, uTileTone.y) * uTileTone.x;
   vec3 chroma = albedo / max(baseLum, 0.004);
   albedo = mix(albedo, chroma * tl, w);
 #endif
